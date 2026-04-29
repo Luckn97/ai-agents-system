@@ -1,43 +1,48 @@
-from typing import Dict, List
-
 from agents.coder import run_coder
 from agents.reviewer import run_reviewer
-from config import MAX_ITERATIONS
-from utils.logger import log_event
+
+MAX_ITERATIONS = 2
 
 
-def _has_issues(review: Dict[str, List[str]]) -> bool:
-    return bool(review["bugs"] or review["improvements"] or review["suggested_fixes"])
+def run_workflow(task: str):
 
+    current_code = ""
+    review_result = {}
 
-def run_workflow(task: str) -> Dict[str, object]:
-    log_event("workflow_started", {"task": task})
+    for iteration in range(MAX_ITERATIONS):
 
-    latest_code = run_coder(task)
-    log_event("coder_output", {"iteration": 1, "output": latest_code})
+        current_code = run_coder(task, current_code)
 
-    latest_review = run_reviewer(latest_code)
-    log_event("reviewer_output", {"iteration": 1, "review": latest_review})
+        review_result = run_reviewer(current_code)
 
-    iteration = 1
-    while iteration < MAX_ITERATIONS and _has_issues(latest_review):
-        iteration += 1
-        feedback = (
-            f"Bugs: {latest_review['bugs']}\n"
-            f"Improvements: {latest_review['improvements']}\n"
-            f"Suggested fixes: {latest_review['suggested_fixes']}"
-        )
-        latest_code = run_coder(task, review_feedback=feedback)
-        log_event("coder_output", {"iteration": iteration, "output": latest_code})
+        bugs = review_result.get("bugs", [])
+        improvements = review_result.get("improvements", [])
+        suggested_fixes = review_result.get("suggested_fixes", [])
 
-        latest_review = run_reviewer(latest_code)
-        log_event("reviewer_output", {"iteration": iteration, "review": latest_review})
+        if not bugs and not improvements:
+            break
 
-    result = {
-        "task": task,
-        "iterations": iteration,
-        "final_code": latest_code,
-        "final_review": latest_review,
+        feedback = f"""
+        Bugs:
+        {bugs}
+
+        Improvements:
+        {improvements}
+
+        Suggested fixes:
+        {suggested_fixes}
+        """
+
+        task = f"""
+        Original task:
+        {task}
+
+        Reviewer feedback:
+        {feedback}
+        """
+
+    return {
+        "iterations": iteration + 1,
+        "review": review_result,
+        "code": current_code
     }
-    log_event("workflow_finished", result)
-    return result
