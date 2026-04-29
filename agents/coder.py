@@ -1,18 +1,38 @@
-from config import CODER_MODEL
 from utils.openai_client import call_openai
 
-coder_prompt = (
-    "You are a senior Python software engineer. "
-    "Return ONLY raw Python code. "
-    "No markdown fences. No explanation. No rationale."
-# Dedicated prompt for the Coder agent.
-coder_prompt = (
-    "You are a senior Python software engineer. "
-    "Generate clean, executable code and short explanations."
-)
+CODER_SYSTEM_PROMPT = """
+You are a senior Python software engineer.
+
+You ONLY respond in valid JSON.
+
+Return this exact JSON format:
+
+{
+  "code": "python code here",
+  "rationale": "short explanation"
+}
+
+Rules:
+- Generate clean code
+- Do not include markdown
+- Do not use triple backticks
+- Always include code
+"""
 
 
-def run_coder(task: str, review_feedback: str = "") -> str:
-    feedback = f"\n\nReview feedback:\n{review_feedback}" if review_feedback else ""
-    user_prompt = f"Task:\n{task}{feedback}\n\nReturn only executable Python code."
-    return call_openai(CODER_MODEL, coder_prompt, user_prompt, temperature=0.2)
+def run_coder(task: str):
+    user_prompt = f"""
+Task:
+{task}
+
+Generate Python code.
+"""
+
+    response = call_openai(
+        system_prompt=CODER_SYSTEM_PROMPT,
+        user_prompt=user_prompt,
+        temperature=0.3,
+        model="gpt-4.1-mini"
+    )
+
+    return response
