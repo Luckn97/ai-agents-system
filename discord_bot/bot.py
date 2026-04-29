@@ -4,9 +4,9 @@ from pathlib import Path
 import discord
 from discord.ext import commands
 
-# Ensure project root is importable when running:
-# python discord_bot/bot.py
+# Projektpfad fix für Railway
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
@@ -20,29 +20,28 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 
 @bot.event
-async def on_ready() -> None:
+async def on_ready():
     print(f"Logged in as {bot.user}")
 
 
 @bot.command(name="task")
-async def run_task(ctx: commands.Context, *, task_text: str) -> None:
+async def run_task(ctx, *, task_text: str):
+
     await ctx.send("Task received. Running multi-agent workflow...")
+
     result = run_workflow(task_text)
 
-generated_code = result.get("code", "No code generated.")
+    generated_code = result.get("code", "No code generated.")
 
-message = (
-    f"✅ Done in {result['iterations']} iteration(s).\n\n"
-    f"## GENERATED CODE\n"
-    f"```python\n{generated_code[:3500]}\n```\n\n"
-    f"## REVIEW SUMMARY\n"
-    f"{result['review']}"
-)
+    message = (
+        f"✅ Done in {result['iterations']} iteration(s).\n\n"
+        f"## GENERATED CODE\n"
+        f"```python\n{generated_code[:3500]}\n```\n\n"
+        f"## REVIEW SUMMARY\n"
+        f"{result['review']}"
+    )
 
-await ctx.send(message)
+    await ctx.send(message)
 
 
-if __name__ == "__main__":
-    if not DISCORD_BOT_TOKEN:
-        raise ValueError("DISCORD_BOT_TOKEN is not set. Please define it in your environment or .env file.")
-    bot.run(DISCORD_BOT_TOKEN)
+bot.run(DISCORD_BOT_TOKEN)
