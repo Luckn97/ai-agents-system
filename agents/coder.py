@@ -20,12 +20,19 @@ Rules:
 """
 
 
-def run_coder(task: str):
+def run_coder(task: str, review_feedback: str = ""):
     user_prompt = f"""
 Task:
 {task}
+"""
 
-Generate Python code.
+    if review_feedback:
+        user_prompt += f"""
+
+Previous review feedback:
+{review_feedback}
+
+Improve the code using this feedback.
 """
 
     response = call_openai(
