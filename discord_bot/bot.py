@@ -1,5 +1,4 @@
 import sys
-import json
 from pathlib import Path
 
 import discord
@@ -31,18 +30,15 @@ async def run_task(ctx: commands.Context, *, task_text: str):
     try:
         result = run_workflow(task_text)
 
-        raw_code = result.get("code", "")
+        code_result = result.get("code", {})
         review = result.get("review", {})
         iterations = result.get("iterations", 1)
 
-        try:
-            parsed_code = json.loads(raw_code)
-
-            code_output = parsed_code.get("code", raw_code)
-            rationale = parsed_code.get("rationale", "")
-
-        except Exception:
-            code_output = raw_code
+        if isinstance(code_result, dict):
+            code_output = code_result.get("code", "No code generated.")
+            rationale = code_result.get("rationale", "")
+        else:
+            code_output = str(code_result)
             rationale = ""
 
         bugs = review.get("bugs", [])
