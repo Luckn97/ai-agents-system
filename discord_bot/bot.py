@@ -29,11 +29,17 @@ async def run_task(ctx: commands.Context, *, task_text: str) -> None:
     await ctx.send("Task received. Running multi-agent workflow...")
     result = run_workflow(task_text)
 
-    message = (
-        f"✅ Done in {result['iterations']} iteration(s).\n"
-        f"Review summary:\n{result['final_review']}"
-    )
-    await ctx.send(message)
+generated_code = result.get("code", "No code generated.")
+
+message = (
+    f"✅ Done in {result['iterations']} iteration(s).\n\n"
+    f"## GENERATED CODE\n"
+    f"```python\n{generated_code[:3500]}\n```\n\n"
+    f"## REVIEW SUMMARY\n"
+    f"{result['review']}"
+)
+
+await ctx.send(message)
 
 
 if __name__ == "__main__":
