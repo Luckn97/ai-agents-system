@@ -16,6 +16,19 @@ Ein vollständiges Multi-Agent-System mit Coder-Agent, Reviewer-Agent, Orchestra
    Dann `.env` ausfüllen:
    - `OPENAI_API_KEY`
    - `DISCORD_BOT_TOKEN`
+   - `CODER_MODEL` (default: `gpt-4.1`)
+   - `REVIEWER_MODEL` (default: `gpt-4o-mini`)
+
+## Model-Konfiguration (Railway)
+
+In Railway unter **Variables** kannst du die Agent-Modelle ohne Codeänderung steuern:
+
+- `CODER_MODEL` für den Coder-Agent
+- `REVIEWER_MODEL` für den Reviewer-Agent
+
+Wenn Variablen nicht gesetzt sind, nutzt das System automatisch:
+- Coder: `gpt-4.1`
+- Reviewer: `gpt-4o-mini`
 
 ## Start
 

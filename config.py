@@ -5,7 +5,11 @@ load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN", "")
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+
+# Agent-specific model configuration (overridable via environment variables / Railway Variables)
+CODER_MODEL = os.getenv("CODER_MODEL", "gpt-4.1")
+REVIEWER_MODEL = os.getenv("REVIEWER_MODEL", "gpt-4o-mini")
+
 MAX_ITERATIONS = 2
 
 if not OPENAI_API_KEY:

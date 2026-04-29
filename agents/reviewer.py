@@ -1,8 +1,10 @@
 import json
 from typing import Dict, List
 
+from config import REVIEWER_MODEL
 from utils.openai_client import call_openai
 
+# Dedicated prompt for the Reviewer agent.
 reviewer_prompt = (
     "You are a strict code reviewer. "
     "Always return valid JSON with exactly these keys: bugs, improvements, suggested_fixes. "
@@ -24,7 +26,9 @@ def run_reviewer(code_text: str) -> Dict[str, List[str]]:
         "Required format:\n"
         '{"bugs": [], "improvements": [], "suggested_fixes": []}'
     )
-    raw = call_openai(reviewer_prompt, user_prompt, temperature=0.1)
+
+    # Model is loaded from environment-backed config for Railway compatibility.
+    raw = call_openai(REVIEWER_MODEL, reviewer_prompt, user_prompt, temperature=0.1)
 
     try:
         parsed = json.loads(raw)

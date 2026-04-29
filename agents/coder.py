@@ -1,5 +1,7 @@
+from config import CODER_MODEL
 from utils.openai_client import call_openai
 
+# Dedicated prompt for the Coder agent.
 coder_prompt = (
     "You are a senior Python software engineer. "
     "Generate clean, executable code and short explanations."
@@ -14,4 +16,6 @@ def run_coder(task: str, review_feedback: str = "") -> str:
         "Return only the improved code solution and a concise rationale."
         f"{feedback_block}"
     )
-    return call_openai(coder_prompt, user_prompt, temperature=0.3)
+
+    # Model is loaded from environment-backed config for Railway compatibility.
+    return call_openai(CODER_MODEL, coder_prompt, user_prompt, temperature=0.3)
