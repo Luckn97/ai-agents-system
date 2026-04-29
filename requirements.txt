@@ -1,0 +1,6 @@
+openai
+py-cord
+streamlit
+pandas
+PyGithub
+python-dotenv
