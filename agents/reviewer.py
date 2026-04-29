@@ -4,13 +4,11 @@ from typing import Dict, List
 from config import REVIEWER_MODEL
 from utils.openai_client import call_openai
 
-# Dedicated prompt for the Reviewer agent.
 reviewer_prompt = (
     "You are a strict code reviewer. "
-    "Always return valid JSON with exactly these keys: bugs, improvements, suggested_fixes. "
-    "Each value must be an array of strings."
+    "Return valid JSON only with keys: bugs, improvements, suggested_fixes. "
+    "All values must be arrays of strings."
 )
-
 
 EMPTY_REVIEW: Dict[str, List[str]] = {
     "bugs": [],
@@ -21,13 +19,11 @@ EMPTY_REVIEW: Dict[str, List[str]] = {
 
 def run_reviewer(code_text: str) -> Dict[str, List[str]]:
     user_prompt = (
-        "Review the following code and return only JSON:\n\n"
+        "Review the following code and return JSON only:\n\n"
         f"{code_text}\n\n"
-        "Required format:\n"
+        "Schema:\n"
         '{"bugs": [], "improvements": [], "suggested_fixes": []}'
     )
-
-    # Model is loaded from environment-backed config for Railway compatibility.
     raw = call_openai(REVIEWER_MODEL, reviewer_prompt, user_prompt, temperature=0.1)
 
     try:
@@ -35,7 +31,7 @@ def run_reviewer(code_text: str) -> Dict[str, List[str]]:
     except json.JSONDecodeError:
         return EMPTY_REVIEW.copy()
 
-    normalized = {
+    normalized: Dict[str, List[str]] = {
         "bugs": parsed.get("bugs", []),
         "improvements": parsed.get("improvements", []),
         "suggested_fixes": parsed.get("suggested_fixes", []),
@@ -45,6 +41,6 @@ def run_reviewer(code_text: str) -> Dict[str, List[str]]:
         if not isinstance(value, list):
             normalized[key] = [str(value)]
         else:
-            normalized[key] = [str(item) for item in value]
+            normalized[key] = [str(v) for v in value]
 
     return normalized
