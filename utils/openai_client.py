@@ -1,17 +1,18 @@
-from openai import OpenAI
-
-from config import OPENAI_API_KEY
-
-_client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
+from config import MAX_TOKENS, TEMPERATURE
+from utils.llm import get_openai_client
 
 
-def call_openai(model: str, system_prompt: str, user_prompt: str, temperature: float = 0.2) -> str:
-    if _client is None:
-        return ""
-
-    response = _client.chat.completions.create(
+def call_openai(
+    model: str,
+    system_prompt: str,
+    user_prompt: str,
+    temperature: float = TEMPERATURE,
+) -> str:
+    client = get_openai_client()
+    response = client.chat.completions.create(
         model=model,
         temperature=temperature,
+        max_tokens=MAX_TOKENS,
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
