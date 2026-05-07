@@ -3,18 +3,34 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN", "")
-GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
+# =========================
+# API KEYS
+# =========================
 
-# Agent-specific models (Railway variable compatible)
-CODER_MODEL = os.getenv("CODER_MODEL", "gpt-4.1")
-REVIEWER_MODEL = os.getenv("REVIEWER_MODEL", "gpt-4o-mini")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 
-# Auto-fix upper bound
-MAX_ITERATIONS = 3
+if not OPENAI_API_KEY:
+    raise ValueError(
+        "OPENAI_API_KEY is not set. Please define it in your environment or .env file."
+    )
 
-# Repo/file settings for generated output
-GENERATED_DIR = "generated"
-GENERATED_FILE = "generated/generated_code.py"
-MEMORY_FILE = "memory/history.json"
+if not DISCORD_BOT_TOKEN:
+    raise ValueError(
+        "DISCORD_BOT_TOKEN is not set. Please define it in your environment or .env file."
+    )
+
+# =========================
+# MODEL CONFIG
+# =========================
+
+CODER_MODEL = "gpt-5.5"
+REVIEWER_MODEL = "gpt-4o-mini"
+
+# =========================
+# WORKFLOW SETTINGS
+# =========================
+
+MAX_ITERATIONS = 2
+TEMPERATURE = 0.2
+MAX_TOKENS = 2000
