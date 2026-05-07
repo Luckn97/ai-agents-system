@@ -29,9 +29,9 @@ def _get_float(name: str, default: float) -> float:
 OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
 DISCORD_BOT_TOKEN: Optional[str] = os.getenv("DISCORD_BOT_TOKEN")
 
-CODER_MODEL: str = os.getenv("CODER_MODEL", "gpt-4.1-mini")
+CODER_MODEL: str = os.getenv("CODER_MODEL", "gpt-4.1")
 REVIEWER_MODEL: str = os.getenv("REVIEWER_MODEL", "gpt-4o-mini")
 
-MAX_ITERATIONS: int = _get_int("MAX_ITERATIONS", 2)
+MAX_ITERATIONS: int = _get_int("MAX_ITERATIONS", 3)
 TEMPERATURE: float = _get_float("TEMPERATURE", 0.2)
 MAX_TOKENS: int = _get_int("MAX_TOKENS", 2000)

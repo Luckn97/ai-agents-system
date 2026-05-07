@@ -1,6 +1,6 @@
 import sys
 from pathlib import Path
-from typing import Iterable, List
+from typing import Any, Iterable, List
 
 import discord
 from discord.ext import commands
@@ -11,7 +11,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from config import DISCORD_BOT_TOKEN
-from orchestrator.workflow import run_workflow
+from orchestrator.workflow import run_workflow_async
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -25,7 +25,7 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 
-def _format_list(items: Iterable[str]) -> str:
+def _format_list(items: Iterable[Any]) -> str:
     values = [str(item).strip() for item in items if str(item).strip()]
     if not values:
         return "- None"
@@ -54,6 +54,11 @@ def _chunk_text(text: str, limit: int = SAFE_MESSAGE_LIMIT) -> List[str]:
     return chunks
 
 
+async def _send_chunks(ctx: commands.Context, text: str) -> None:
+    for chunk in _chunk_text(text):
+        await ctx.send(chunk)
+
+
 async def _send_code(ctx: commands.Context, code: str) -> None:
     if not code.strip():
         await ctx.send("## Generated Code\nNo code generated.")
@@ -77,21 +82,25 @@ async def run_task(ctx: commands.Context, *, task_text: str) -> None:
     await ctx.send("⚙️ Task received. Running multi-agent workflow...")
 
     try:
-        result = run_workflow(task_text)
+        result = await run_workflow_async(task_text)
 
         code_result = result.get("code", {})
         review = result.get("review", {})
+        state = result.get("state", {})
         iterations = result.get("iterations", 1)
+        improvements_applied = bool(state.get("improvements_applied", False))
 
         code_output = str(code_result.get("code", "No code generated."))
         rationale = str(code_result.get("rationale", ""))
 
-        await ctx.send(f"✅ Done in {iterations} iteration(s).")
+        await ctx.send(
+            f"✅ Done.\n"
+            f"**Iterations:** {iterations}\n"
+            f"**Improvements applied:** {'Yes' if improvements_applied else 'No'}"
+        )
         await _send_code(ctx, code_output)
 
-        if rationale:
-            for chunk in _chunk_text(f"## Rationale\n{rationale}"):
-                await ctx.send(chunk)
+        await _send_chunks(ctx, f"## Rationale\n{rationale or 'No rationale provided.'}")
 
         review_message = (
             "## Review\n"
@@ -99,9 +108,7 @@ async def run_task(ctx: commands.Context, *, task_text: str) -> None:
             f"**Improvements**\n{_format_list(review.get('improvements', []))}\n\n"
             f"**Suggested Fixes**\n{_format_list(review.get('suggested_fixes', []))}"
         )
-
-        for chunk in _chunk_text(review_message):
-            await ctx.send(chunk)
+        await _send_chunks(ctx, review_message)
 
     except Exception as exc:
         logger.exception("Workflow failed")
