@@ -1,6 +1,7 @@
 import os
 import discord
 from discord.ext import commands
+
 from orchestrator.workflow import run_workflow
 
 TOKEN = os.getenv("DISCORD_BOT_TOKEN")
@@ -26,9 +27,21 @@ async def task(ctx, *, task_text: str):
         code = result.get("code", "No code generated")
         review = result.get("review", "No review generated")
 
-        response = f"""
-✅ Workflow finished
+        response = (
+            "✅ Workflow finished\n\n"
+            "## Generated Code\n"
+            f"```python\n{code}\n```\n\n"
+            "## Review\n"
+            f"{review}"
+        )
 
-## Generated Code
-```python
-{code}
+        if len(response) > 1900:
+            response = response[:1900]
+
+        await ctx.send(response)
+
+    except Exception as e:
+        await ctx.send(f"❌ Workflow failed safely: {str(e)}")
+
+
+bot.run(TOKEN)
