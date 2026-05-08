@@ -1,76 +1,49 @@
 import json
 
-from config import CODER_MODEL, MAX_TOKENS, TEMPERATURE
-from utils.llm import client
-from utils.logger import logger
+from utils.llm import call_llm
 
 
-def run_coder(task: str, review_feedback: str = ""):
-    logger.info("Running coder agent...")
+def run_coder(task: str, review_feedback=None):
+    """
+    Generates improved Python code based on task + review feedback.
+    """
 
-    prompt = f"""
-You are an expert Python software engineer.
+    if review_feedback is None:
+        review_feedback = {}
+
+    coder_prompt = f"""
+You are a senior Python developer.
 
 TASK:
 {task}
 
 REVIEW FEEDBACK:
-{review_feedback}
+{json.dumps(review_feedback, indent=2)}
 
-You MUST respond ONLY with valid JSON.
+IMPORTANT:
+- Return ONLY valid JSON
+- No markdown
+- No explanations outside JSON
+- Escape all newlines correctly
 
-FORMAT:
-
+Required JSON format:
 {{
-    "files": [
-        {{
-            "path": "relative/file/path.py",
-            "content": "FULL FILE CONTENT"
-        }}
-    ],
-    "rationale": "SHORT EXPLANATION"
+    "code": "full code here",
+    "rationale": "short explanation"
 }}
-
-RULES:
-- Always create complete files
-- Always include file paths
-- Never use markdown
-- Never use triple backticks
-- Content must be raw file content only
 """
 
-    response = client.chat.completions.create(
-        model=CODER_MODEL,
-        temperature=TEMPERATURE,
-        max_tokens=MAX_TOKENS,
-        messages=[
-            {
-                "role": "system",
-                "content": "You are a senior AI coding agent."
-            },
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ]
-    )
+    response = call_llm(coder_prompt)
 
-    content = response.choices[0].message.content
+    # Falls response schon dict ist
+    if isinstance(response, dict):
+        return response
 
-    logger.info("Coder response received.")
-
+    # Falls response string ist
     try:
-        parsed = json.loads(content)
-
+        return json.loads(response)
+    except Exception:
         return {
-            "files": parsed.get("files", []),
-            "rationale": parsed.get("rationale", "")
-        }
-
-    except Exception as e:
-        logger.error(f"Failed to parse coder JSON: {e}")
-
-        return {
-            "files": [],
-            "rationale": "JSON parsing failed."
+            "code": "",
+            "rationale": "Failed to parse model response"
         }
