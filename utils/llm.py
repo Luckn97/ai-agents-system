@@ -10,7 +10,7 @@ client = OpenAI(
 
 def call_llm(prompt: str):
     """
-    Sends a prompt to OpenAI and returns parsed JSON.
+    Sends prompt to OpenAI and returns parsed JSON.
     """
 
     response = client.chat.completions.create(
@@ -30,10 +30,19 @@ def call_llm(prompt: str):
 
     content = response.choices[0].message.content.strip()
 
-    # JSON sicher parsen
     try:
         return json.loads(content)
+
     except Exception:
         return {
             "raw_response": content
         }
+
+
+def call_json_model(prompt: str):
+    """
+    Backwards compatibility wrapper.
+    Alte Agents können weiterhin call_json_model benutzen.
+    """
+
+    return call_llm(prompt)
