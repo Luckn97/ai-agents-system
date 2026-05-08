@@ -10,3 +10,7 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger("multi-agent-bot")
+
+
+def get_logger():
+    return logger
