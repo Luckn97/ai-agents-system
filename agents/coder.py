@@ -1,14 +1,14 @@
-from typing import Any, Dict
+import json
 
 from config import CODER_MODEL, MAX_TOKENS, TEMPERATURE
-from utils.llm import call_json_model
-from utils.logger import get_logger
+from utils.llm import client
+from utils.logger import logger
 
-logger = get_logger(__name__)
 
-CODER_SYSTEM_PROMPT = """
-You are a senior Python software engineer.
+def run_coder(task: str, review_feedback: str = ""):
+    logger.info("Running coder agent...")
 
+<<<<<<< codex/refactor-ai-multi-agent-discord-system-lub81l
 You must respond with one strict JSON object and no additional text.
 The JSON object must exactly match this schema:
 {
@@ -25,17 +25,31 @@ Rules:
 - You MUST fix all reviewer issues when reviewer feedback is provided.
 - Preserve existing behavior unless a reviewer issue requires a change.
 """.strip()
+=======
+    prompt = f"""
+You are an expert Python software engineer.
 
+TASK:
+{task}
+>>>>>>> main
 
+REVIEW FEEDBACK:
+{review_feedback}
+
+<<<<<<< codex/refactor-ai-multi-agent-discord-system-lub81l
 def run_coder(
     task: str,
     review_feedback: str = "",
     previous_code: str = "",
 ) -> Dict[str, str]:
     logger.info("Running coder agent")
+=======
+You MUST respond ONLY with valid JSON.
+>>>>>>> main
 
-    user_prompt = f"Task:\n{task.strip()}"
+FORMAT:
 
+<<<<<<< codex/refactor-ai-multi-agent-discord-system-lub81l
     if previous_code:
         user_prompt += f"\n\nPrevious code to improve:\n{previous_code.strip()}"
 
@@ -45,16 +59,58 @@ def run_coder(
             f"{review_feedback}\n\n"
             "You MUST fix all reviewer issues. Apply every suggested fix that improves correctness, safety, or maintainability."
         )
+=======
+{{
+    "files": [
+        {{
+            "path": "relative/file/path.py",
+            "content": "FULL FILE CONTENT"
+        }}
+    ],
+    "rationale": "SHORT EXPLANATION"
+}}
+>>>>>>> main
 
-    response: Dict[str, Any] = call_json_model(
+RULES:
+- Always create complete files
+- Always include file paths
+- Never use markdown
+- Never use triple backticks
+- Content must be raw file content only
+"""
+
+    response = client.chat.completions.create(
         model=CODER_MODEL,
-        system_prompt=CODER_SYSTEM_PROMPT,
-        user_prompt=user_prompt,
         temperature=TEMPERATURE,
         max_tokens=MAX_TOKENS,
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a senior AI coding agent."
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
     )
 
-    return {
-        "code": str(response.get("code", "")).strip(),
-        "rationale": str(response.get("rationale", "")).strip(),
-    }
+    content = response.choices[0].message.content
+
+    logger.info("Coder response received.")
+
+    try:
+        parsed = json.loads(content)
+
+        return {
+            "files": parsed.get("files", []),
+            "rationale": parsed.get("rationale", "")
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to parse coder JSON: {e}")
+
+        return {
+            "files": [],
+            "rationale": "JSON parsing failed."
+        }

@@ -1,14 +1,19 @@
-import json
-from typing import Any, Dict, List
-
 from agents.coder import run_coder
+<<<<<<< codex/refactor-ai-multi-agent-discord-system-lub81l
 from agents.reviewer import ReviewResult, run_reviewer
+=======
+from agents.reviewer import run_reviewer
+
+>>>>>>> main
 from config import MAX_ITERATIONS
-from utils.logger import get_logger, log_event
+from utils.logger import logger
+from utils.file_manager import write_file
 
-logger = get_logger(__name__)
 
+def run_workflow(task: str):
+    logger.info(f"Starting workflow for task: {task}")
 
+<<<<<<< codex/refactor-ai-multi-agent-discord-system-lub81l
 def _has_high_severity_bugs(review: ReviewResult) -> bool:
     return any(bug.get("severity") == "high" for bug in review.get("bugs", []))
 
@@ -23,12 +28,18 @@ def _has_feedback(review: ReviewResult) -> bool:
 
 def _build_review_feedback(review: ReviewResult) -> str:
     return json.dumps(review, ensure_ascii=False)
+=======
+    final_files = []
+    rationale = ""
+    review = {}
+>>>>>>> main
 
+    feedback = ""
 
-def run_workflow(task: str) -> Dict[str, Any]:
-    logger.info("Starting workflow")
-    log_event("workflow_started", {"task": task})
+    for iteration in range(MAX_ITERATIONS):
+        logger.info(f"Iteration {iteration + 1}")
 
+<<<<<<< codex/refactor-ai-multi-agent-discord-system-lub81l
     previous_code = ""
     review_feedback = ""
     reviewer_history: List[ReviewResult] = []
@@ -109,3 +120,55 @@ def run_workflow(task: str) -> Dict[str, Any]:
         },
     )
     return result
+=======
+        coder_result = run_coder(
+            task=task,
+            review_feedback=feedback
+        )
+
+        generated_files = coder_result.get("files", [])
+        rationale = coder_result.get("rationale", "")
+
+        final_files = generated_files
+
+        combined_code = ""
+
+        for file in generated_files:
+            path = file.get("path", "")
+            content = file.get("content", "")
+
+            combined_code += f"\nFILE: {path}\n{content}\n"
+
+            write_file(path, content)
+
+        review = run_reviewer(combined_code)
+
+        bugs = review.get("bugs", [])
+
+        high_severity_bugs = [
+            bug for bug in bugs
+            if isinstance(bug, dict)
+            and bug.get("severity") == "high"
+        ]
+
+        if not high_severity_bugs:
+            logger.info("No high severity bugs found.")
+
+            break
+
+        feedback = f"""
+Reviewer found issues:
+
+{review}
+"""
+
+    logger.info("Workflow completed.")
+
+    return {
+        "iterations": iteration + 1,
+        "files": final_files,
+        "rationale": rationale,
+        "review": review,
+        "improvements_applied": iteration > 0
+    }
+>>>>>>> main

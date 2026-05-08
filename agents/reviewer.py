@@ -57,8 +57,14 @@ _VALID_SEVERITIES = {"low", "medium", "high"}
 def _as_string_list(value: Any) -> List[str]:
     if not isinstance(value, list):
         return []
-    return [str(item).strip() for item in value if str(item).strip()]
 
+    items: List[str] = []
+    for item in value:
+        if isinstance(item, dict):
+            parts = [str(item.get(key, "")).strip() for key in ("issue", "fix", "description")]
+            text = " | ".join(part for part in parts if part)
+        else:
+            text = str(item).strip()
 
 def _normalize_severity(value: Any) -> Severity:
     severity = str(value or "medium").strip().lower()
@@ -99,18 +105,37 @@ def _normalize_bugs(value: Any) -> List[BugFinding]:
 def run_reviewer(code: str) -> ReviewResult:
     logger.info("Running reviewer agent")
 
-    user_prompt = f"Review this code:\n\n{code.strip()}"
+    return items
 
-    response: Dict[str, Any] = call_json_model(
-        model=REVIEWER_MODEL,
-        system_prompt=REVIEWER_SYSTEM_PROMPT,
-        user_prompt=user_prompt,
-        temperature=TEMPERATURE,
-        max_tokens=MAX_TOKENS,
-    )
 
+def _normalize_review_response(response: Dict[str, Any]) -> ReviewResult:
     return {
         "bugs": _normalize_bugs(response.get("bugs", [])),
         "improvements": _as_string_list(response.get("improvements", [])),
         "suggested_fixes": _as_string_list(response.get("suggested_fixes", [])),
     }
+
+
+async def run_reviewer_async(code: str) -> ReviewResult:
+    logger.info("Running reviewer agent")
+
+    user_prompt = f"Review this code:\n\n{code.strip()}"
+
+    try:
+        response: Dict[str, Any] = await asyncio.to_thread(
+            call_json_model,
+            model=REVIEWER_MODEL,
+            system_prompt=REVIEWER_SYSTEM_PROMPT,
+            user_prompt=user_prompt,
+            temperature=TEMPERATURE,
+            max_tokens=MAX_TOKENS,
+        )
+    except Exception:
+        logger.exception("Reviewer agent failed")
+        raise
+
+    return _normalize_review_response(response)
+
+
+def run_reviewer(code: str) -> ReviewResult:
+    return asyncio.run(run_reviewer_async(code))

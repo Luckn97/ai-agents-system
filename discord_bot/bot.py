@@ -5,19 +5,8 @@ from typing import Any, Dict, Iterable, List
 import discord
 from discord.ext import commands
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-
 from config import DISCORD_BOT_TOKEN
 from orchestrator.workflow import run_workflow
-from utils.logger import get_logger
-
-logger = get_logger(__name__)
-
-DISCORD_MESSAGE_LIMIT = 2000
-SAFE_MESSAGE_LIMIT = 1900
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -93,25 +82,26 @@ async def _send_code(ctx: commands.Context, code: str) -> None:
 
 
 @bot.event
-async def on_ready() -> None:
-    logger.info("Logged in as %s", bot.user)
+async def on_ready():
+    print(f"Logged in as {bot.user}")
 
 
 @bot.command(name="task")
-async def run_task(ctx: commands.Context, *, task_text: str) -> None:
-    await ctx.send("⚙️ Task received. Running multi-agent workflow...")
+async def run_task(ctx, *, task_text: str):
+    await ctx.send("⚙️ Running autonomous workflow...")
 
     try:
         result = run_workflow(task_text)
 
-        code_result = result.get("code", {})
+        files = result.get("files", [])
+        rationale = result.get("rationale", "")
         review = result.get("review", {})
         state = result.get("state", {})
         iterations = result.get("iterations", 1)
         improvements_applied = bool(state.get("improvements_applied", False))
 
-        code_output = str(code_result.get("code", "No code generated."))
-        rationale = str(code_result.get("rationale", ""))
+        message = f"""
+✅ Workflow Complete
 
         summary_message = (
             f"✅ Done in {iterations} iteration(s).\n"
@@ -120,9 +110,8 @@ async def run_task(ctx: commands.Context, *, task_text: str) -> None:
         await ctx.send(summary_message)
         await _send_code(ctx, code_output)
 
-        if rationale:
-            for chunk in _chunk_text(f"## Rationale\n{rationale}"):
-                await ctx.send(chunk)
+Improvements Applied:
+{result['improvements_applied']}
 
         review_message = (
             "## Reviewer Findings\n"
@@ -131,15 +120,26 @@ async def run_task(ctx: commands.Context, *, task_text: str) -> None:
             f"**Suggested Fixes**\n{_format_list(review.get('suggested_fixes', []))}"
         )
 
-        for chunk in _chunk_text(review_message):
-            await ctx.send(chunk)
+        for file in files:
+            path = file.get("path", "unknown")
+            message += f"\n- {path}"
 
-    except Exception as exc:
-        logger.exception("Workflow failed")
-        await ctx.send(f"❌ Workflow failed safely: {exc}")
+        message += f"""
 
+Rationale:
+{rationale}
 
-if not DISCORD_BOT_TOKEN:
-    raise RuntimeError("DISCORD_BOT_TOKEN is not set.")
+Review:
+{review}
+"""
+
+        if len(message) > 1900:
+            message = message[:1900]
+
+        await ctx.send(message)
+
+    except Exception as e:
+        await ctx.send(f"❌ Workflow failed safely: {str(e)}")
+
 
 bot.run(DISCORD_BOT_TOKEN)
