@@ -9,8 +9,9 @@ logging.basicConfig(
     ]
 )
 
-logger = logging.getLogger("multi-agent-bot")
+
+def get_logger(name="multi-agent-bot"):
+    return logging.getLogger(name)
 
 
-def get_logger():
-    return logger
+logger = get_logger()
