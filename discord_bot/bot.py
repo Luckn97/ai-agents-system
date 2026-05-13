@@ -30,10 +30,13 @@ async def task(ctx, *, task_text: str):
 
         code = result.get("code", "No code generated")
         review = result.get("review", "No review generated")
+        improved = result.get("improved", False)
+
+        status = "✅ Auto-improvement applied" if improved else "ℹ️ No improvements needed"
 
         response = (
-            "✅ Workflow finished\n\n"
-            "## Generated Code\n"
+            f"{status}\n\n"
+            "## Final Code\n"
             f"```python\n{code}\n```\n\n"
             "## Review\n"
             f"{review}"
