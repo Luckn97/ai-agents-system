@@ -1,5 +1,5 @@
 from reviewer.python_ast_analyzer import PythonASTAnalyzer
-from reviewer.autofix_engine import AutoFixEngine
+from reviewer.ast_autofix_engine import ASTAutoFixEngine
 
 
 class ReviewCycle:
@@ -21,7 +21,7 @@ class ReviewCycle:
 
         current_code = code
 
-        autofix_engine = AutoFixEngine()
+        autofix_engine = ASTAutoFixEngine()
 
         iteration_results = []
 
@@ -34,17 +34,13 @@ class ReviewCycle:
             self.max_iterations + 1
         ):
 
-            # -----------------------------------
-            # REVIEW
-            # -----------------------------------
-
             findings = self.analyze_code(
                 current_code,
                 f"iteration_{iteration}.py"
             )
 
             # -----------------------------------
-            # STOP IF CLEAN
+            # CLEAN
             # -----------------------------------
 
             if not findings:
@@ -97,10 +93,6 @@ class ReviewCycle:
                 f"fixed_iteration_{iteration}.py"
             )
 
-            # -----------------------------------
-            # RESOLVED
-            # -----------------------------------
-
             remaining_titles = {
 
                 finding["title"]
@@ -120,10 +112,6 @@ class ReviewCycle:
                     resolved_findings.append(
                         finding
                     )
-
-            # -----------------------------------
-            # STORE ITERATION
-            # -----------------------------------
 
             iteration_results.append({
 
@@ -147,7 +135,7 @@ class ReviewCycle:
             })
 
             # -----------------------------------
-            # STOP IF NO CHANGES
+            # STOP IF NO CHANGE
             # -----------------------------------
 
             if fixed_code == current_code:
