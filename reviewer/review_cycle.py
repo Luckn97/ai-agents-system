@@ -8,7 +8,15 @@ class ReviewCycle:
 
         self.max_iterations = 5
 
-    def analyze_code(self, code, file_path):
+    # -----------------------------------
+    # ANALYZE
+    # -----------------------------------
+
+    def analyze_code(
+        self,
+        code,
+        file_path
+    ):
 
         analyzer = PythonASTAnalyzer(
             code=code,
@@ -17,7 +25,15 @@ class ReviewCycle:
 
         return analyzer.analyze()
 
-    def run(self, code: str):
+    # -----------------------------------
+    # REVIEW SINGLE FILE
+    # -----------------------------------
+
+    def review_file(
+        self,
+        code,
+        file_path
+    ):
 
         current_code = code
 
@@ -36,7 +52,7 @@ class ReviewCycle:
 
             findings = self.analyze_code(
                 current_code,
-                f"iteration_{iteration}.py"
+                file_path
             )
 
             # -----------------------------------
@@ -90,7 +106,7 @@ class ReviewCycle:
 
             remaining_findings = self.analyze_code(
                 fixed_code,
-                f"fixed_iteration_{iteration}.py"
+                file_path
             )
 
             remaining_titles = {
@@ -131,7 +147,9 @@ class ReviewCycle:
 
                 "fixes_applied": fixes_applied,
 
-                "diff": diff_output
+                "diff": diff_output,
+
+                "final_code": fixed_code
             })
 
             # -----------------------------------
@@ -150,10 +168,12 @@ class ReviewCycle:
 
         final_findings = self.analyze_code(
             current_code,
-            "final_code.py"
+            file_path
         )
 
         return {
+
+            "file_path": file_path,
 
             "iterations": iteration_results,
 
