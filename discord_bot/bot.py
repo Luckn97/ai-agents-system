@@ -9,11 +9,16 @@ sys.path.append(
 )
 
 from reviewer.python_ast_analyzer import PythonASTAnalyzer
+from reviewer.autofix_engine import AutoFixEngine
+
+print("NEW AST + AUTOFIX REVIEWER ACTIVE")
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 
 if not TOKEN:
-    raise ValueError("DISCORD_TOKEN environment variable missing")
+    raise ValueError(
+        "DISCORD_TOKEN environment variable missing"
+    )
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -36,21 +41,34 @@ async def on_message(message):
         return
 
     # -----------------------------------
-    # USER INPUT EXTRAHIEREN
+    # USER INPUT
     # -----------------------------------
 
-    user_prompt = message.content.replace("!task", "").strip()
+    user_prompt = message.content.replace(
+        "!task",
+        ""
+    ).strip()
+
+    # -----------------------------------
+    # CODE EXTRACTION
+    # -----------------------------------
 
     if "CODE:" in user_prompt:
-        code_example = user_prompt.split("CODE:")[1].strip()
+
+        code_example = user_prompt.split(
+            "CODE:"
+        )[1].strip()
+
     else:
+
         await message.channel.send(
             "❌ Kein CODE:-Block gefunden."
         )
+
         return
 
     # -----------------------------------
-    # AST ANALYSE
+    # AST REVIEW
     # -----------------------------------
 
     try:
@@ -71,7 +89,35 @@ async def on_message(message):
         return
 
     # -----------------------------------
-    # RESPONSE AUFBAUEN
+    # AUTOFIX
+    # -----------------------------------
+
+    try:
+
+        autofix_engine = AutoFixEngine()
+
+        autofix_result = autofix_engine.apply_fixes(
+            code_example
+        )
+
+        fixed_code = autofix_result[
+            "fixed_code"
+        ]
+
+        fixes_applied = autofix_result[
+            "fixes_applied"
+        ]
+
+    except Exception as e:
+
+        await message.channel.send(
+            f"❌ Fehler beim AutoFix:\n```python\n{str(e)}\n```"
+        )
+
+        return
+
+    # -----------------------------------
+    # RESPONSE
     # -----------------------------------
 
     response = (
@@ -79,9 +125,13 @@ async def on_message(message):
         f"⚠️ Findings Found: {len(findings)}\n\n"
     )
 
+    # -----------------------------------
+    # FINDINGS
+    # -----------------------------------
+
     if not findings:
 
-        response += "✅ Keine Probleme gefunden."
+        response += "✅ Keine Probleme gefunden.\n"
 
     else:
 
@@ -101,15 +151,45 @@ async def on_message(message):
                 "-----------------------------------\n\n"
             )
 
+    # -----------------------------------
+    # AUTOFIX RESULTS
+    # -----------------------------------
+
+    response += "\n🛠️ **AutoFix Results**\n\n"
+
+    if fixes_applied:
+
+        for fix in fixes_applied:
+
+            response += f"✅ {fix}\n"
+
+    else:
+
+        response += (
+            "Keine automatischen Fixes angewendet.\n"
+        )
+
+    # -----------------------------------
+    # FIXED CODE
+    # -----------------------------------
+
     response += (
-        "\n```python\n"
-        f"{code_example[:1000]}\n"
+        "\n📦 **Fixed Code:**\n"
+        "```python\n"
+        f"{fixed_code[:1200]}\n"
         "```"
     )
 
-    # Discord Limit Protection
+    # -----------------------------------
+    # DISCORD LIMIT PROTECTION
+    # -----------------------------------
+
     if len(response) > 1900:
-        response = response[:1900] + "\n\n...[truncated]"
+
+        response = (
+            response[:1900]
+            + "\n\n...[truncated]"
+        )
 
     await message.channel.send(response)
 
