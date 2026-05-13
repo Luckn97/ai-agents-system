@@ -4,13 +4,16 @@ import sys
 
 sys.path.append(
     os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "..")
+        os.path.join(
+            os.path.dirname(__file__),
+            ".."
+        )
     )
 )
 
 from reviewer.review_cycle import ReviewCycle
 
-print("RE-REVIEW ENGINE ACTIVE")
+print("ADVANCED REVIEW CYCLE ACTIVE")
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 
@@ -93,24 +96,16 @@ async def on_message(message):
 
         return
 
-    initial_findings = result[
-        "initial_findings"
+    iterations = result[
+        "iterations"
     ]
 
-    remaining_findings = result[
-        "remaining_findings"
+    final_findings = result[
+        "final_findings"
     ]
 
-    resolved_findings = result[
-        "resolved_findings"
-    ]
-
-    fixes_applied = result[
-        "fixes_applied"
-    ]
-
-    diff_output = result[
-        "diff"
+    success = result[
+        "success"
     ]
 
     # -----------------------------------
@@ -118,100 +113,117 @@ async def on_message(message):
     # -----------------------------------
 
     response = (
-        "🧠 **Review Cycle Results**\n\n"
-    )
-
-    # -----------------------------------
-    # INITIAL FINDINGS
-    # -----------------------------------
-
-    response += (
-        f"⚠️ Initial Findings: "
-        f"{len(initial_findings)}\n"
+        "🧠 **Advanced Review Cycle Results**\n\n"
     )
 
     response += (
-        f"✅ Resolved Findings: "
-        f"{len(resolved_findings)}\n"
+        f"🔄 Iterations: "
+        f"{len(iterations)}\n"
     )
 
     response += (
-        f"🚨 Remaining Findings: "
-        f"{len(remaining_findings)}\n\n"
+        f"✅ Success: "
+        f"{success}\n"
+    )
+
+    response += (
+        f"🚨 Final Findings: "
+        f"{len(final_findings)}\n\n"
     )
 
     # -----------------------------------
-    # RESOLVED FINDINGS
+    # ITERATIONS
     # -----------------------------------
 
-    if resolved_findings:
+    for iteration_data in iterations:
 
         response += (
-            "✅ **Resolved Findings**\n\n"
+            f"\n============================\n"
         )
 
-        for finding in resolved_findings:
+        response += (
+            f"🔁 ITERATION "
+            f"{iteration_data['iteration']}\n"
+        )
+
+        response += (
+            f"📌 Status: "
+            f"{iteration_data['status']}\n"
+        )
+
+        response += (
+            f"⚠️ Findings: "
+            f"{len(iteration_data['findings'])}\n"
+        )
+
+        response += (
+            f"✅ Resolved: "
+            f"{len(iteration_data['resolved_findings'])}\n"
+        )
+
+        response += (
+            f"🚨 Remaining: "
+            f"{len(iteration_data['remaining_findings'])}\n\n"
+        )
+
+        # -----------------------------------
+        # FIXES
+        # -----------------------------------
+
+        if iteration_data[
+            "fixes_applied"
+        ]:
 
             response += (
-                f"✔️ {finding['title']} "
+                "🛠️ Applied Fixes\n"
+            )
+
+            for fix in iteration_data[
+                "fixes_applied"
+            ]:
+
+                response += (
+                    f"✅ {fix}\n"
+                )
+
+        # -----------------------------------
+        # DIFF
+        # -----------------------------------
+
+        if iteration_data["diff"]:
+
+            response += (
+                "\n📦 Diff\n"
+                "```diff\n"
+                f"{iteration_data['diff'][:600]}\n"
+                "```\n"
+            )
+
+    # -----------------------------------
+    # FINAL FINDINGS
+    # -----------------------------------
+
+    if final_findings:
+
+        response += (
+            "\n🚨 FINAL REMAINING FINDINGS\n\n"
+        )
+
+        for finding in final_findings:
+
+            response += (
+                f"❌ {finding['title']} "
                 f"(Line {finding['line']})\n"
             )
-
-    # -----------------------------------
-    # REMAINING FINDINGS
-    # -----------------------------------
-
-    if remaining_findings:
-
-        response += (
-            "\n🚨 **Remaining Findings**\n\n"
-        )
-
-        for finding in remaining_findings:
-
-            response += (
-                "-----------------------------------\n"
-                f"🆔 ID: {finding['id']}\n"
-                f"📌 Title: {finding['title']}\n"
-                f"🔥 Severity: {finding['severity']}\n"
-                f"📍 Line: {finding['line']}\n"
-                f"📝 Description: {finding['description']}\n"
-                "-----------------------------------\n\n"
-            )
-
-    # -----------------------------------
-    # AUTOFIX RESULTS
-    # -----------------------------------
-
-    response += (
-        "\n🛠️ **Applied Fixes**\n\n"
-    )
-
-    if fixes_applied:
-
-        for fix in fixes_applied:
-
-            response += f"✅ {fix}\n"
 
     else:
 
         response += (
-            "Keine automatischen Fixes angewendet.\n"
+            "\n🎉 No remaining findings detected.\n"
         )
 
     # -----------------------------------
-    # DIFF
-    # -----------------------------------
-
-    response += (
-        "\n📦 **Generated Diff**\n"
-        "```diff\n"
-        f"{diff_output[:1000]}\n"
-        "```"
-    )
-
-    # -----------------------------------
-    # LIMIT PROTECTION
+    # DISCORD LIMIT
     # -----------------------------------
 
     if len(response) > 1900:
