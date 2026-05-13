@@ -1,32 +1,38 @@
 from agents.coder import run_coder
-from agents.coder import improve_code
 from agents.reviewer import run_reviewer
+from utils.logger import get_logger
+
+logger = get_logger()
 
 
-async def run_workflow(task: str):
-    # STEP 1 - Initial Code
-    coder_result = await run_coder(task)
+async def run_workflow(task: str) -> dict:
+    """
+    Hauptworkflow:
+    1. Code generieren
+    2. Review durchführen
+    3. Code verbessern
+    """
 
-    code = coder_result.get("code", "")
+    logger.info("Workflow gestartet")
 
-    # STEP 2 - Review
-    reviewer_result = await run_reviewer(code)
+    # STEP 1: Code generieren
+    generated_code = await run_coder(task)
 
-    review = reviewer_result.get("review", "")
-    should_improve = reviewer_result.get("should_improve", False)
+    logger.info("Code erfolgreich generiert")
 
-    improved = False
+    # STEP 2: Review + Verbesserung
+    review_result = await run_reviewer(
+        task=task,
+        code=generated_code
+    )
 
-    # STEP 3 - Auto Improvement
-    if should_improve:
-        improved_result = await improve_code(code, review)
-
-        code = improved_result.get("improved_code", code)
-
-        improved = True
+    logger.info("Review abgeschlossen")
 
     return {
-        "code": code,
-        "review": review,
-        "improved": improved
+        "generated_code": generated_code,
+        "review": review_result,
+        "final_code": review_result.get(
+            "fixed_code",
+            generated_code
+        )
     }
