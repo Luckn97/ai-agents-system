@@ -11,13 +11,15 @@ sys.path.append(
     )
 )
 
+from reviewer.project_loader import ProjectLoader
 from reviewer.review_cycle import ReviewCycle
 
-print("ADVANCED REVIEW CYCLE ACTIVE")
+print("PROJECT REVIEW ENGINE ACTIVE")
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 
 if not TOKEN:
+
     raise ValueError(
         "DISCORD_TOKEN environment variable missing"
     )
@@ -45,197 +47,218 @@ async def on_message(message):
         return
 
     if not message.content.startswith(
-        "!task"
+        "!review_project"
     ):
         return
 
     # -----------------------------------
-    # USER INPUT
-    # -----------------------------------
-
-    user_prompt = message.content.replace(
-        "!task",
-        ""
-    ).strip()
-
-    # -----------------------------------
-    # CODE EXTRACTION
-    # -----------------------------------
-
-    if "CODE:" in user_prompt:
-
-        code_example = user_prompt.split(
-            "CODE:"
-        )[1].strip()
-
-    else:
-
-        await message.channel.send(
-            "❌ Kein CODE:-Block gefunden."
-        )
-
-        return
-
-    # -----------------------------------
-    # REVIEW CYCLE
+    # COMMAND
     # -----------------------------------
 
     try:
 
-        cycle = ReviewCycle()
+        project_path = message.content.replace(
+            "!review_project",
+            ""
+        ).strip()
 
-        result = cycle.run(
-            code_example
+        if not project_path:
+
+            await message.channel.send(
+                "❌ Bitte Projektpfad angeben."
+            )
+
+            return
+
+        # -----------------------------------
+        # LOAD PROJECT
+        # -----------------------------------
+
+        loader = ProjectLoader()
+
+        files = loader.load_project_files(
+            project_path
+        )
+
+        if not files:
+
+            await message.channel.send(
+                "❌ Keine Python-Dateien gefunden."
+            )
+
+            return
+
+        review_cycle = ReviewCycle()
+
+        response = (
+            "🧠 **Project Review Results**\n\n"
+        )
+
+        total_findings = 0
+        total_fixed = 0
+
+        # -----------------------------------
+        # REVIEW FILES
+        # -----------------------------------
+
+        for file_data in files:
+
+            file_path = file_data[
+                "file_path"
+            ]
+
+            content = file_data[
+                "content"
+            ]
+
+            # Skip read errors
+            if content.startswith(
+                "# FILE_READ_ERROR"
+            ):
+
+                response += (
+                    f"❌ Fehler beim Lesen:\n"
+                    f"{file_path}\n\n"
+                )
+
+                continue
+
+            result = review_cycle.review_file(
+                content,
+                file_path
+            )
+
+            final_findings = result[
+                "final_findings"
+            ]
+
+            iterations = result[
+                "iterations"
+            ]
+
+            fixed_count = 0
+
+            for iteration in iterations:
+
+                fixed_count += len(
+                    iteration[
+                        "resolved_findings"
+                    ]
+                )
+
+            initial_findings = 0
+
+            if iterations:
+
+                initial_findings = len(
+                    iterations[0][
+                        "findings"
+                    ]
+                )
+
+            total_findings += (
+                initial_findings
+            )
+
+            total_fixed += fixed_count
+
+            # -----------------------------------
+            # FILE RESULT
+            # -----------------------------------
+
+            response += (
+                "============================\n"
+            )
+
+            response += (
+                f"📄 FILE:\n{file_path}\n\n"
+            )
+
+            response += (
+                f"⚠️ Findings: "
+                f"{initial_findings}\n"
+            )
+
+            response += (
+                f"✅ Fixed: "
+                f"{fixed_count}\n"
+            )
+
+            response += (
+                f"🚨 Remaining: "
+                f"{len(final_findings)}\n"
+            )
+
+            response += (
+                f"🎯 Success: "
+                f"{result['success']}\n\n"
+            )
+
+            # -----------------------------------
+            # FINAL FINDINGS
+            # -----------------------------------
+
+            if final_findings:
+
+                response += (
+                    "🚨 Remaining Findings:\n"
+                )
+
+                for finding in final_findings:
+
+                    response += (
+                        f"- {finding['title']}\n"
+                    )
+
+                response += "\n"
+
+        # -----------------------------------
+        # SUMMARY
+        # -----------------------------------
+
+        response += (
+            "============================\n"
+        )
+
+        response += (
+            "📊 PROJECT SUMMARY\n\n"
+        )
+
+        response += (
+            f"📁 Files Reviewed: "
+            f"{len(files)}\n"
+        )
+
+        response += (
+            f"⚠️ Total Findings: "
+            f"{total_findings}\n"
+        )
+
+        response += (
+            f"✅ Total Fixed: "
+            f"{total_fixed}\n"
+        )
+
+        # -----------------------------------
+        # DISCORD LIMIT
+        # -----------------------------------
+
+        if len(response) > 1900:
+
+            response = (
+                response[:1900]
+                + "\n\n...[truncated]"
+            )
+
+        await message.channel.send(
+            response
         )
 
     except Exception as e:
 
         await message.channel.send(
-            f"❌ Fehler im Review Cycle:\n```python\n{str(e)}\n```"
+            f"❌ Fehler:\n```python\n{str(e)}\n```"
         )
-
-        return
-
-    iterations = result[
-        "iterations"
-    ]
-
-    final_findings = result[
-        "final_findings"
-    ]
-
-    success = result[
-        "success"
-    ]
-
-    # -----------------------------------
-    # RESPONSE
-    # -----------------------------------
-
-    response = (
-        "🧠 **Advanced Review Cycle Results**\n\n"
-    )
-
-    response += (
-        f"🔄 Iterations: "
-        f"{len(iterations)}\n"
-    )
-
-    response += (
-        f"✅ Success: "
-        f"{success}\n"
-    )
-
-    response += (
-        f"🚨 Final Findings: "
-        f"{len(final_findings)}\n\n"
-    )
-
-    # -----------------------------------
-    # ITERATIONS
-    # -----------------------------------
-
-    for iteration_data in iterations:
-
-        response += (
-            f"\n============================\n"
-        )
-
-        response += (
-            f"🔁 ITERATION "
-            f"{iteration_data['iteration']}\n"
-        )
-
-        response += (
-            f"📌 Status: "
-            f"{iteration_data['status']}\n"
-        )
-
-        response += (
-            f"⚠️ Findings: "
-            f"{len(iteration_data['findings'])}\n"
-        )
-
-        response += (
-            f"✅ Resolved: "
-            f"{len(iteration_data['resolved_findings'])}\n"
-        )
-
-        response += (
-            f"🚨 Remaining: "
-            f"{len(iteration_data['remaining_findings'])}\n\n"
-        )
-
-        # -----------------------------------
-        # FIXES
-        # -----------------------------------
-
-        if iteration_data[
-            "fixes_applied"
-        ]:
-
-            response += (
-                "🛠️ Applied Fixes\n"
-            )
-
-            for fix in iteration_data[
-                "fixes_applied"
-            ]:
-
-                response += (
-                    f"✅ {fix}\n"
-                )
-
-        # -----------------------------------
-        # DIFF
-        # -----------------------------------
-
-        if iteration_data["diff"]:
-
-            response += (
-                "\n📦 Diff\n"
-                "```diff\n"
-                f"{iteration_data['diff'][:600]}\n"
-                "```\n"
-            )
-
-    # -----------------------------------
-    # FINAL FINDINGS
-    # -----------------------------------
-
-    if final_findings:
-
-        response += (
-            "\n🚨 FINAL REMAINING FINDINGS\n\n"
-        )
-
-        for finding in final_findings:
-
-            response += (
-                f"❌ {finding['title']} "
-                f"(Line {finding['line']})\n"
-            )
-
-    else:
-
-        response += (
-            "\n🎉 No remaining findings detected.\n"
-        )
-
-    # -----------------------------------
-    # DISCORD LIMIT
-    # -----------------------------------
-
-    if len(response) > 1900:
-
-        response = (
-            response[:1900]
-            + "\n\n...[truncated]"
-        )
-
-    await message.channel.send(
-        response
-    )
 
 
 client.run(TOKEN)
