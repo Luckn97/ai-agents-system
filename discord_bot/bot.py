@@ -1,6 +1,11 @@
 import discord
 import os
 
+import sys
+import os
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 from reviewer.reviewer_engine import ReviewerEngine
 
 TOKEN = os.getenv("DISCORD_TOKEN")
