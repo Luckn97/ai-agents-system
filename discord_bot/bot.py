@@ -11,7 +11,7 @@ sys.path.append(
 from reviewer.python_ast_analyzer import PythonASTAnalyzer
 from reviewer.autofix_engine import AutoFixEngine
 
-print("NEW AST + AUTOFIX REVIEWER ACTIVE")
+print("NEW AST + DIFF AUTOFIX REVIEWER ACTIVE")
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 
@@ -108,6 +108,10 @@ async def on_message(message):
             "fixes_applied"
         ]
 
+        diff_output = autofix_result[
+            "diff"
+        ]
+
     except Exception as e:
 
         await message.channel.send(
@@ -170,13 +174,13 @@ async def on_message(message):
         )
 
     # -----------------------------------
-    # FIXED CODE
+    # DIFF OUTPUT
     # -----------------------------------
 
     response += (
-        "\n📦 **Fixed Code:**\n"
-        "```python\n"
-        f"{fixed_code[:1200]}\n"
+        "\n📦 **Generated Diff:**\n"
+        "```diff\n"
+        f"{diff_output[:1200]}\n"
         "```"
     )
 
