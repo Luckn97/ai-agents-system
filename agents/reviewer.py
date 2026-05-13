@@ -6,25 +6,26 @@ logger = get_logger()
 
 async def run_reviewer(task: str, code: str) -> dict:
     """
-    Reviews generated code and returns:
-    - bugs
-    - improvements
-    - improved code
+    Führt einen intelligenten Code-Review durch
+    und gibt Bugs, Verbesserungen und verbesserten Code zurück.
     """
 
     prompt = f"""
-You are a senior software engineer performing a professional code review.
+Du bist ein Senior Software Engineer und führst ein professionelles Code Review durch.
 
-Your task:
-1. Analyze the provided code carefully
-2. Find REAL bugs, edge cases, security issues, bad practices
-3. Suggest meaningful improvements
-4. Improve the code directly
-5. Return STRICT JSON only
+AUFGABEN:
+1. Analysiere den Code sorgfältig
+2. Finde echte Bugs, Edge Cases und schlechte Praktiken
+3. Finde mögliche Sicherheitsprobleme
+4. Schlage sinnvolle Verbesserungen vor
+5. Verbessere den Code direkt
+6. Antworte AUSSCHLIESSLICH als JSON
 
-Be highly critical but practical.
-Avoid generic feedback.
-Only mention real issues.
+WICHTIG:
+- Keine generischen Aussagen
+- Nur echte Probleme nennen
+- Keine Erklärungen außerhalb des JSONs
+- Der verbesserte Code muss vollständig sein
 
 TASK:
 {task}
