@@ -6,7 +6,7 @@ class ReviewCycle:
 
     def __init__(self):
 
-        self.max_iterations = 3
+        self.max_iterations = 5
 
     def analyze_code(self, code, file_path):
 
@@ -25,10 +25,8 @@ class ReviewCycle:
 
         iteration_results = []
 
-        all_resolved_findings = []
-
         # -----------------------------------
-        # MULTI ITERATION LOOP
+        # ITERATION LOOP
         # -----------------------------------
 
         for iteration in range(
@@ -42,7 +40,7 @@ class ReviewCycle:
 
             findings = self.analyze_code(
                 current_code,
-                f"user_code_iteration_{iteration}.py"
+                f"iteration_{iteration}.py"
             )
 
             # -----------------------------------
@@ -52,17 +50,26 @@ class ReviewCycle:
             if not findings:
 
                 iteration_results.append({
+
                     "iteration": iteration,
+
+                    "status": "clean",
+
                     "findings": [],
+
+                    "resolved_findings": [],
+
+                    "remaining_findings": [],
+
                     "fixes_applied": [],
-                    "diff": "",
-                    "status": "clean"
+
+                    "diff": ""
                 })
 
                 break
 
             # -----------------------------------
-            # AUTOFIX
+            # APPLY FIXES
             # -----------------------------------
 
             autofix_result = autofix_engine.apply_fixes(
@@ -91,15 +98,17 @@ class ReviewCycle:
             )
 
             # -----------------------------------
-            # RESOLVED FINDINGS
+            # RESOLVED
             # -----------------------------------
 
-            resolved_findings = []
-
             remaining_titles = {
+
                 finding["title"]
+
                 for finding in remaining_findings
             }
+
+            resolved_findings = []
 
             for finding in findings:
 
@@ -112,10 +121,6 @@ class ReviewCycle:
                         finding
                     )
 
-                    all_resolved_findings.append(
-                        finding
-                    )
-
             # -----------------------------------
             # STORE ITERATION
             # -----------------------------------
@@ -124,25 +129,25 @@ class ReviewCycle:
 
                 "iteration": iteration,
 
-                "findings": findings,
-
-                "remaining_findings": remaining_findings,
-
-                "resolved_findings": resolved_findings,
-
-                "fixes_applied": fixes_applied,
-
-                "diff": diff_output,
-
                 "status": (
                     "clean"
                     if not remaining_findings
                     else "needs_review"
-                )
+                ),
+
+                "findings": findings,
+
+                "resolved_findings": resolved_findings,
+
+                "remaining_findings": remaining_findings,
+
+                "fixes_applied": fixes_applied,
+
+                "diff": diff_output
             })
 
             # -----------------------------------
-            # STOP IF NOTHING CHANGED
+            # STOP IF NO CHANGES
             # -----------------------------------
 
             if fixed_code == current_code:
@@ -152,7 +157,7 @@ class ReviewCycle:
             current_code = fixed_code
 
         # -----------------------------------
-        # FINAL ANALYSIS
+        # FINAL REVIEW
         # -----------------------------------
 
         final_findings = self.analyze_code(
@@ -164,11 +169,9 @@ class ReviewCycle:
 
             "iterations": iteration_results,
 
-            "final_code": current_code,
-
             "final_findings": final_findings,
 
-            "resolved_findings": all_resolved_findings,
+            "final_code": current_code,
 
             "success": len(final_findings) == 0
         }
