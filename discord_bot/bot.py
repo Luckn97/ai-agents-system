@@ -1,80 +1,135 @@
+import discord
 import os
 
-import discord
-from discord.ext import commands
+from reviewer.reviewer_engine import ReviewerEngine
 
-from orchestrator.workflow import run_workflow
-
-TOKEN = os.getenv("DISCORD_BOT_TOKEN")
+TOKEN = os.getenv("DISCORD_TOKEN")
 
 intents = discord.Intents.default()
 intents.message_content = True
 
-bot = commands.Bot(
-    command_prefix="!",
-    intents=intents
-)
+client = discord.Client(intents=intents)
 
 
-@bot.event
+@client.event
 async def on_ready():
-    print(f"Bot eingeloggt als: {bot.user}")
+    print(f"Logged in as {client.user}")
 
 
-@bot.command()
-async def task(ctx, *, prompt: str):
-    """
-    Führt den autonomen Workflow aus
-    """
+@client.event
+async def on_message(message):
 
-    try:
-        await ctx.send("⚙️ Starte autonomen Workflow...")
+    if message.author == client.user:
+        return
 
-        result = await run_workflow(prompt)
+    if not message.content.startswith("!task"):
+        return
 
-        generated_code = result.get(
-            "generated_code",
-            ""
+    code_example = """
+import hashlib
+import random
+
+users = {}
+
+def create_user(name, password, roles=[]):
+    hashed = hashlib.md5(password.encode()).hexdigest()
+
+    user_id = random.randint(1, 5)
+
+    users[user_id] = {
+        "name": name,
+        "password": hashed,
+        "roles": roles
+    }
+
+    return user_id
+
+def calculate_average(numbers):
+    total = 0
+
+    for i in range(len(numbers)):
+        total += numbers[i]
+
+    return total / len(numbers)
+
+create_user("admin", "123456")
+print(calculate_average([]))
+"""
+
+    engine = ReviewerEngine()
+
+    engine.add_finding(
+        title="Unsafe MD5 Usage",
+        description="MD5 is insecure for password hashing",
+        severity="high",
+        file_path="auth.py",
+        line=8,
+        code_snippet="hashlib.md5(password.encode())",
+        category="security"
+    )
+
+    engine.add_finding(
+        title="Mutable Default Argument",
+        description="Using mutable default arguments can cause shared state bugs",
+        severity="medium",
+        file_path="auth.py",
+        line=6,
+        code_snippet="roles=[]",
+        category="bug"
+    )
+
+    engine.add_finding(
+        title="Possible Division By Zero",
+        description="len(numbers) can be zero",
+        severity="medium",
+        file_path="math_utils.py",
+        line=24,
+        code_snippet="return total / len(numbers)",
+        category="bug"
+    )
+
+    engine.add_finding(
+        title="Weak Random ID Generation",
+        description="Small random range can create collisions",
+        severity="medium",
+        file_path="auth.py",
+        line=10,
+        code_snippet="random.randint(1, 5)",
+        category="security"
+    )
+
+    findings = engine.get_findings()
+
+    response = (
+        "🧠 **Reviewer Results**\n\n"
+        f"⚠️ Findings Found: {len(findings)}\n\n"
+    )
+
+    for finding in findings:
+
+        response += (
+            "-----------------------------------\n"
+            f"🆔 ID: {finding['id']}\n"
+            f"📌 Title: {finding['title']}\n"
+            f"🔥 Severity: {finding['severity']}\n"
+            f"🎯 Confidence: {finding['confidence']}\n"
+            f"📄 File: {finding['file_path']}\n"
+            f"📍 Line: {finding['line']}\n"
+            f"📂 Category: {finding['category']}\n"
+            f"📝 Description: {finding['description']}\n"
+            "-----------------------------------\n\n"
         )
 
-        review = result.get(
-            "review",
-            {}
-        )
+    response += (
+        "```python\n"
+        f"{code_example}\n"
+        "```"
+    )
 
-        final_code = result.get(
-            "final_code",
-            ""
-        )
+    if len(response) > 1900:
+        response = response[:1900] + "\n\n...[truncated]"
 
-        bugs = review.get(
-            "bugs",
-            []
-        )
+    await message.channel.send(response)
 
-        improvements = review.get(
-            "improvements",
-            []
-        )
 
-        bugs_text = "\n".join(
-            f"- {bug}" for bug in bugs
-        )
-
-        improvements_text = "\n".join(
-            f"- {item}" for item in improvements
-        )
-
-        if not bugs_text:
-            bugs_text = "- Keine Bugs gefunden"
-
-        if not improvements_text:
-            improvements_text = "- Keine Verbesserungen gefunden"
-
-        response = f"""
-# ✅ Workflow abgeschlossen
-
-## Generierter Code
-
-```python
-{generated_code[:1200]}
+client.run(TOKEN)
