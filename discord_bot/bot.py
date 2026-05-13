@@ -8,10 +8,9 @@ sys.path.append(
     )
 )
 
-from reviewer.python_ast_analyzer import PythonASTAnalyzer
-from reviewer.autofix_engine import AutoFixEngine
+from reviewer.review_cycle import ReviewCycle
 
-print("NEW AST + DIFF AUTOFIX REVIEWER ACTIVE")
+print("RE-REVIEW ENGINE ACTIVE")
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 
@@ -23,12 +22,17 @@ if not TOKEN:
 intents = discord.Intents.default()
 intents.message_content = True
 
-client = discord.Client(intents=intents)
+client = discord.Client(
+    intents=intents
+)
 
 
 @client.event
 async def on_ready():
-    print(f"Logged in as {client.user}")
+
+    print(
+        f"Logged in as {client.user}"
+    )
 
 
 @client.event
@@ -37,7 +41,9 @@ async def on_message(message):
     if message.author == client.user:
         return
 
-    if not message.content.startswith("!task"):
+    if not message.content.startswith(
+        "!task"
+    ):
         return
 
     # -----------------------------------
@@ -68,90 +74,108 @@ async def on_message(message):
         return
 
     # -----------------------------------
-    # AST REVIEW
+    # REVIEW CYCLE
     # -----------------------------------
 
     try:
 
-        analyzer = PythonASTAnalyzer(
-            code=code_example,
-            file_path="user_code.py"
-        )
+        cycle = ReviewCycle()
 
-        findings = analyzer.analyze()
-
-    except Exception as e:
-
-        await message.channel.send(
-            f"❌ Fehler bei der Analyse:\n```python\n{str(e)}\n```"
-        )
-
-        return
-
-    # -----------------------------------
-    # AUTOFIX
-    # -----------------------------------
-
-    try:
-
-        autofix_engine = AutoFixEngine()
-
-        autofix_result = autofix_engine.apply_fixes(
+        result = cycle.run(
             code_example
         )
 
-        fixed_code = autofix_result[
-            "fixed_code"
-        ]
-
-        fixes_applied = autofix_result[
-            "fixes_applied"
-        ]
-
-        diff_output = autofix_result[
-            "diff"
-        ]
-
     except Exception as e:
 
         await message.channel.send(
-            f"❌ Fehler beim AutoFix:\n```python\n{str(e)}\n```"
+            f"❌ Fehler im Review Cycle:\n```python\n{str(e)}\n```"
         )
 
         return
+
+    initial_findings = result[
+        "initial_findings"
+    ]
+
+    remaining_findings = result[
+        "remaining_findings"
+    ]
+
+    resolved_findings = result[
+        "resolved_findings"
+    ]
+
+    fixes_applied = result[
+        "fixes_applied"
+    ]
+
+    diff_output = result[
+        "diff"
+    ]
 
     # -----------------------------------
     # RESPONSE
     # -----------------------------------
 
     response = (
-        "🧠 **Reviewer Results**\n\n"
-        f"⚠️ Findings Found: {len(findings)}\n\n"
+        "🧠 **Review Cycle Results**\n\n"
     )
 
     # -----------------------------------
-    # FINDINGS
+    # INITIAL FINDINGS
     # -----------------------------------
 
-    if not findings:
+    response += (
+        f"⚠️ Initial Findings: "
+        f"{len(initial_findings)}\n"
+    )
 
-        response += "✅ Keine Probleme gefunden.\n"
+    response += (
+        f"✅ Resolved Findings: "
+        f"{len(resolved_findings)}\n"
+    )
 
-    else:
+    response += (
+        f"🚨 Remaining Findings: "
+        f"{len(remaining_findings)}\n\n"
+    )
 
-        for finding in findings:
+    # -----------------------------------
+    # RESOLVED FINDINGS
+    # -----------------------------------
+
+    if resolved_findings:
+
+        response += (
+            "✅ **Resolved Findings**\n\n"
+        )
+
+        for finding in resolved_findings:
+
+            response += (
+                f"✔️ {finding['title']} "
+                f"(Line {finding['line']})\n"
+            )
+
+    # -----------------------------------
+    # REMAINING FINDINGS
+    # -----------------------------------
+
+    if remaining_findings:
+
+        response += (
+            "\n🚨 **Remaining Findings**\n\n"
+        )
+
+        for finding in remaining_findings:
 
             response += (
                 "-----------------------------------\n"
                 f"🆔 ID: {finding['id']}\n"
                 f"📌 Title: {finding['title']}\n"
                 f"🔥 Severity: {finding['severity']}\n"
-                f"🎯 Confidence: {finding['confidence']}\n"
-                f"📄 File: {finding['file_path']}\n"
                 f"📍 Line: {finding['line']}\n"
-                f"📂 Category: {finding['category']}\n"
                 f"📝 Description: {finding['description']}\n"
-                f"💻 Snippet: {finding['code_snippet']}\n"
                 "-----------------------------------\n\n"
             )
 
@@ -159,7 +183,9 @@ async def on_message(message):
     # AUTOFIX RESULTS
     # -----------------------------------
 
-    response += "\n🛠️ **AutoFix Results**\n\n"
+    response += (
+        "\n🛠️ **Applied Fixes**\n\n"
+    )
 
     if fixes_applied:
 
@@ -174,18 +200,18 @@ async def on_message(message):
         )
 
     # -----------------------------------
-    # DIFF OUTPUT
+    # DIFF
     # -----------------------------------
 
     response += (
-        "\n📦 **Generated Diff:**\n"
+        "\n📦 **Generated Diff**\n"
         "```diff\n"
-        f"{diff_output[:1200]}\n"
+        f"{diff_output[:1000]}\n"
         "```"
     )
 
     # -----------------------------------
-    # DISCORD LIMIT PROTECTION
+    # LIMIT PROTECTION
     # -----------------------------------
 
     if len(response) > 1900:
@@ -195,7 +221,9 @@ async def on_message(message):
             + "\n\n...[truncated]"
         )
 
-    await message.channel.send(response)
+    await message.channel.send(
+        response
+    )
 
 
 client.run(TOKEN)
