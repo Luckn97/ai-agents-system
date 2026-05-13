@@ -1,16 +1,20 @@
 import discord
 import os
-
 import sys
-import os
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.append(
+    os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..")
+    )
+)
 
-from reviewer.reviewer_engine import ReviewerEngine
+from reviewer.python_ast_analyzer import PythonASTAnalyzer
 
 TOKEN = os.getenv("DISCORD_TOKEN")
+
 if not TOKEN:
     raise ValueError("DISCORD_TOKEN environment variable missing")
+
 intents = discord.Intents.default()
 intents.message_content = True
 
@@ -31,107 +35,79 @@ async def on_message(message):
     if not message.content.startswith("!task"):
         return
 
-    code_example = """
-import hashlib
-import random
+    # -----------------------------------
+    # USER INPUT EXTRAHIEREN
+    # -----------------------------------
 
-users = {}
+    user_prompt = message.content.replace("!task", "").strip()
 
-def create_user(name, password, roles=[]):
-    hashed = hashlib.md5(password.encode()).hexdigest()
+    if "CODE:" in user_prompt:
+        code_example = user_prompt.split("CODE:")[1].strip()
+    else:
+        await message.channel.send(
+            "❌ Kein CODE:-Block gefunden."
+        )
+        return
 
-    user_id = random.randint(1, 5)
+    # -----------------------------------
+    # AST ANALYSE
+    # -----------------------------------
 
-    users[user_id] = {
-        "name": name,
-        "password": hashed,
-        "roles": roles
-    }
+    try:
 
-    return user_id
+        analyzer = PythonASTAnalyzer(
+            code=code_example,
+            file_path="user_code.py"
+        )
 
-def calculate_average(numbers):
-    total = 0
+        findings = analyzer.analyze()
 
-    for i in range(len(numbers)):
-        total += numbers[i]
+    except Exception as e:
 
-    return total / len(numbers)
+        await message.channel.send(
+            f"❌ Fehler bei der Analyse:\n```python\n{str(e)}\n```"
+        )
 
-create_user("admin", "123456")
-print(calculate_average([]))
-"""
+        return
 
-    engine = ReviewerEngine()
-
-    engine.add_finding(
-        title="Unsafe MD5 Usage",
-        description="MD5 is insecure for password hashing",
-        severity="high",
-        file_path="auth.py",
-        line=8,
-        code_snippet="hashlib.md5(password.encode())",
-        category="security"
-    )
-
-    engine.add_finding(
-        title="Mutable Default Argument",
-        description="Using mutable default arguments can cause shared state bugs",
-        severity="medium",
-        file_path="auth.py",
-        line=6,
-        code_snippet="roles=[]",
-        category="bug"
-    )
-
-    engine.add_finding(
-        title="Possible Division By Zero",
-        description="len(numbers) can be zero",
-        severity="medium",
-        file_path="math_utils.py",
-        line=24,
-        code_snippet="return total / len(numbers)",
-        category="bug"
-    )
-
-    engine.add_finding(
-        title="Weak Random ID Generation",
-        description="Small random range can create collisions",
-        severity="medium",
-        file_path="auth.py",
-        line=10,
-        code_snippet="random.randint(1, 5)",
-        category="security"
-    )
-
-    findings = engine.get_findings()
+    # -----------------------------------
+    # RESPONSE AUFBAUEN
+    # -----------------------------------
 
     response = (
         "🧠 **Reviewer Results**\n\n"
         f"⚠️ Findings Found: {len(findings)}\n\n"
     )
 
-    for finding in findings:
+    if not findings:
 
-        response += (
-            "-----------------------------------\n"
-            f"🆔 ID: {finding['id']}\n"
-            f"📌 Title: {finding['title']}\n"
-            f"🔥 Severity: {finding['severity']}\n"
-            f"🎯 Confidence: {finding['confidence']}\n"
-            f"📄 File: {finding['file_path']}\n"
-            f"📍 Line: {finding['line']}\n"
-            f"📂 Category: {finding['category']}\n"
-            f"📝 Description: {finding['description']}\n"
-            "-----------------------------------\n\n"
-        )
+        response += "✅ Keine Probleme gefunden."
+
+    else:
+
+        for finding in findings:
+
+            response += (
+                "-----------------------------------\n"
+                f"🆔 ID: {finding['id']}\n"
+                f"📌 Title: {finding['title']}\n"
+                f"🔥 Severity: {finding['severity']}\n"
+                f"🎯 Confidence: {finding['confidence']}\n"
+                f"📄 File: {finding['file_path']}\n"
+                f"📍 Line: {finding['line']}\n"
+                f"📂 Category: {finding['category']}\n"
+                f"📝 Description: {finding['description']}\n"
+                f"💻 Snippet: {finding['code_snippet']}\n"
+                "-----------------------------------\n\n"
+            )
 
     response += (
-        "```python\n"
-        f"{code_example}\n"
+        "\n```python\n"
+        f"{code_example[:1000]}\n"
         "```"
     )
 
+    # Discord Limit Protection
     if len(response) > 1900:
         response = response[:1900] + "\n\n...[truncated]"
 
