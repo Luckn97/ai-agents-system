@@ -13,6 +13,7 @@ sys.path.append(
 
 from reviewer.project_loader import ProjectLoader
 from reviewer.review_cycle import ReviewCycle
+from reviewer.file_writer import FileWriter
 
 print("PROJECT REVIEW ENGINE ACTIVE")
 
@@ -51,10 +52,6 @@ async def on_message(message):
     ):
         return
 
-    # -----------------------------------
-    # COMMAND
-    # -----------------------------------
-
     try:
 
         project_path = message.content.replace(
@@ -90,12 +87,15 @@ async def on_message(message):
 
         review_cycle = ReviewCycle()
 
+        file_writer = FileWriter()
+
         response = (
             "🧠 **Project Review Results**\n\n"
         )
 
         total_findings = 0
         total_fixed = 0
+        total_written = 0
 
         # -----------------------------------
         # REVIEW FILES
@@ -111,7 +111,10 @@ async def on_message(message):
                 "content"
             ]
 
-            # Skip read errors
+            # -----------------------------------
+            # SKIP READ ERRORS
+            # -----------------------------------
+
             if content.startswith(
                 "# FILE_READ_ERROR"
             ):
@@ -122,6 +125,10 @@ async def on_message(message):
                 )
 
                 continue
+
+            # -----------------------------------
+            # REVIEW
+            # -----------------------------------
 
             result = review_cycle.review_file(
                 content,
@@ -134,6 +141,10 @@ async def on_message(message):
 
             iterations = result[
                 "iterations"
+            ]
+
+            final_code = result[
+                "final_code"
             ]
 
             fixed_count = 0
@@ -161,6 +172,36 @@ async def on_message(message):
             )
 
             total_fixed += fixed_count
+
+            # -----------------------------------
+            # WRITE FIXED FILE
+            # -----------------------------------
+
+            write_success = False
+
+            if (
+                final_code
+                and final_code != content
+            ):
+
+                file_writer.create_backup(
+                    file_path
+                )
+
+                write_result = (
+                    file_writer.write_file(
+                        file_path,
+                        final_code
+                    )
+                )
+
+                write_success = write_result[
+                    "success"
+                ]
+
+                if write_success:
+
+                    total_written += 1
 
             # -----------------------------------
             # FILE RESULT
@@ -191,11 +232,16 @@ async def on_message(message):
 
             response += (
                 f"🎯 Success: "
-                f"{result['success']}\n\n"
+                f"{result['success']}\n"
+            )
+
+            response += (
+                f"💾 File Updated: "
+                f"{write_success}\n\n"
             )
 
             # -----------------------------------
-            # FINAL FINDINGS
+            # REMAINING FINDINGS
             # -----------------------------------
 
             if final_findings:
@@ -237,6 +283,11 @@ async def on_message(message):
         response += (
             f"✅ Total Fixed: "
             f"{total_fixed}\n"
+        )
+
+        response += (
+            f"💾 Files Updated: "
+            f"{total_written}\n"
         )
 
         # -----------------------------------
