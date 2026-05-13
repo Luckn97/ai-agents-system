@@ -4,7 +4,8 @@ import os
 from reviewer.reviewer_engine import ReviewerEngine
 
 TOKEN = os.getenv("DISCORD_TOKEN")
-
+if not TOKEN:
+    raise ValueError("DISCORD_TOKEN environment variable missing")
 intents = discord.Intents.default()
 intents.message_content = True
 
