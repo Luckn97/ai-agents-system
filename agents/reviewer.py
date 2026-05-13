@@ -9,17 +9,30 @@ Analysiere folgenden Python Code:
 
 {code}
 
-Antworte im Format:
+Suche nach:
+- Bugs
+- Verbesserungen
+- Clean Code Problemen
+- Fehlender Error Handling
+- Performance Problemen
+
+Antworte EXAKT im Format:
 
 BUGS:
 - ...
 
 IMPROVEMENTS:
 - ...
+
+SHOULD_IMPROVE:
+YES oder NO
 """
 
     review = await call_llm(prompt)
 
+    should_improve = "YES" in review.upper()
+
     return {
-        "review": review
+        "review": review,
+        "should_improve": should_improve
     }
