@@ -1,4 +1,5 @@
 import re
+import difflib
 
 
 class AutoFixEngine:
@@ -6,6 +7,8 @@ class AutoFixEngine:
     def apply_fixes(self, code: str):
 
         fixes_applied = []
+
+        original_code = code
 
         updated_code = code
 
@@ -39,7 +42,10 @@ class AutoFixEngine:
 
             original = match.group(0)
 
-            fixed = original.replace("=[]", "=None")
+            fixed = original.replace(
+                "=[]",
+                "=None"
+            )
 
             updated_code = updated_code.replace(
                 original,
@@ -70,7 +76,22 @@ class AutoFixEngine:
                 "Detected os.system() - consider subprocess.run()"
             )
 
+        # -----------------------------------
+        # DIFF GENERATION
+        # -----------------------------------
+
+        diff = difflib.unified_diff(
+            original_code.splitlines(),
+            updated_code.splitlines(),
+            fromfile="original.py",
+            tofile="fixed.py",
+            lineterm=""
+        )
+
+        diff_output = "\n".join(diff)
+
         return {
             "fixed_code": updated_code,
-            "fixes_applied": fixes_applied
+            "fixes_applied": fixes_applied,
+            "diff": diff_output
         }
