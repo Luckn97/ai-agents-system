@@ -1,7 +1,4 @@
-import sys
 import os
-
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import discord
 from discord.ext import commands
@@ -13,42 +10,71 @@ TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 intents = discord.Intents.default()
 intents.message_content = True
 
-bot = commands.Bot(command_prefix="!", intents=intents)
+bot = commands.Bot(
+    command_prefix="!",
+    intents=intents
+)
 
 
 @bot.event
 async def on_ready():
-    print(f"Logged in as {bot.user}")
+    print(f"Bot eingeloggt als: {bot.user}")
 
 
 @bot.command()
-async def task(ctx, *, task_text: str):
+async def task(ctx, *, prompt: str):
+    """
+    Führt den autonomen Workflow aus
+    """
+
     try:
-        await ctx.send("⚙️ Running autonomous workflow...")
+        await ctx.send("⚙️ Starte autonomen Workflow...")
 
-        result = await run_workflow(task_text)
+        result = await run_workflow(prompt)
 
-        code = result.get("code", "No code generated")
-        review = result.get("review", "No review generated")
-        improved = result.get("improved", False)
-
-        status = "✅ Auto-improvement applied" if improved else "ℹ️ No improvements needed"
-
-        response = (
-            f"{status}\n\n"
-            "## Final Code\n"
-            f"```python\n{code}\n```\n\n"
-            "## Review\n"
-            f"{review}"
+        generated_code = result.get(
+            "generated_code",
+            ""
         )
 
-        if len(response) > 1900:
-            response = response[:1900]
+        review = result.get(
+            "review",
+            {}
+        )
 
-        await ctx.send(response)
+        final_code = result.get(
+            "final_code",
+            ""
+        )
 
-    except Exception as e:
-        await ctx.send(f"❌ Workflow failed safely: {str(e)}")
+        bugs = review.get(
+            "bugs",
+            []
+        )
 
+        improvements = review.get(
+            "improvements",
+            []
+        )
 
-bot.run(TOKEN)
+        bugs_text = "\n".join(
+            f"- {bug}" for bug in bugs
+        )
+
+        improvements_text = "\n".join(
+            f"- {item}" for item in improvements
+        )
+
+        if not bugs_text:
+            bugs_text = "- Keine Bugs gefunden"
+
+        if not improvements_text:
+            improvements_text = "- Keine Verbesserungen gefunden"
+
+        response = f"""
+# ✅ Workflow abgeschlossen
+
+## Generierter Code
+
+```python
+{generated_code[:1200]}
